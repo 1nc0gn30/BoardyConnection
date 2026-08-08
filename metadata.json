@@ -1,0 +1,6 @@
+{
+  "name": "Connection Dashboard",
+  "description": "A private, local-first dashboard for tracking personal introductions, meetings, and status updates via deep links.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
