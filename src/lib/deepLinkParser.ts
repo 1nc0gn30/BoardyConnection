@@ -1,5 +1,7 @@
 import { ConnectionStatus, DeepLinkPayload } from '../types/connection';
 
+const MAX_PAYLOAD_LENGTH = 102400; // 100 KB limit
+
 const VALID_STATUSES: ConnectionStatus[] = [
   'not_started',
   'ongoing',
@@ -11,10 +13,35 @@ const VALID_STATUSES: ConnectionStatus[] = [
 ];
 
 /**
+  * Helper to validate that a URL uses secure https:// protocol only.
+  */
+function isValidHttpsUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Encodes a deep link payload into a URL-safe Base64 string.
+ * Explicitly sanitizes and excludes private user notes or ratings.
  */
 export function encodePayload(payload: DeepLinkPayload): string {
-  const jsonStr = JSON.stringify(payload);
+  const sanitized: DeepLinkPayload = {
+    v: 1,
+    id: String(payload.id).trim(),
+    personName: String(payload.personName).trim(),
+    personRef: payload.personRef ? String(payload.personRef).trim() : undefined,
+    linkedInUrl: payload.linkedInUrl ? String(payload.linkedInUrl).trim() : undefined,
+    introContext: payload.introContext ? String(payload.introContext).trim() : undefined,
+    status: payload.status,
+    meetingDateTime: payload.meetingDateTime ? String(payload.meetingDateTime).trim() : undefined,
+    meetingUrl: payload.meetingUrl ? String(payload.meetingUrl).trim() : undefined,
+  };
+
+  const jsonStr = JSON.stringify(sanitized);
   // Convert UTF-8 to base64
   const bytes = new TextEncoder().encode(jsonStr);
   let binary = '';
@@ -35,6 +62,14 @@ export function decodePayload(
 ): { success: true; data: DeepLinkPayload } | { success: false; error: string } {
   if (!rawPayloadStr || typeof rawPayloadStr !== 'string') {
     return { success: false, error: 'Empty or missing payload parameter.' };
+  }
+
+  // Enforce maximum payload length (100 KB)
+  if (rawPayloadStr.length > MAX_PAYLOAD_LENGTH) {
+    return {
+      success: false,
+      error: `Payload exceeds maximum allowed length of ${MAX_PAYLOAD_LENGTH / 1024} KB.`,
+    };
   }
 
   let jsonString = '';
@@ -77,9 +112,8 @@ export function decodePayload(
 
   const obj = parsed as Record<string, unknown>;
 
-  // Check version
-  const versionNum = Number(obj.v);
-  if (versionNum !== 1) {
+  // Check version (must be integer 1)
+  if (obj.v !== 1) {
     return {
       success: false,
       error: `Unsupported payload version: "${String(obj.v)}". Expected version 1.`,
@@ -108,16 +142,54 @@ export function decodePayload(
     }
   }
 
+  // URL protocol validations (https only)
+  let validatedLinkedInUrl: string | undefined = undefined;
+  if (typeof obj.linkedInUrl === 'string' && obj.linkedInUrl.trim() !== '') {
+    const trimmedUrl = obj.linkedInUrl.trim();
+    if (!isValidHttpsUrl(trimmedUrl)) {
+      return {
+        success: false,
+        error: `Invalid or unsafe LinkedIn URL "${trimmedUrl}". Only https:// URLs are allowed.`,
+      };
+    }
+    validatedLinkedInUrl = trimmedUrl;
+  }
+
+  let validatedMeetingUrl: string | undefined = undefined;
+  if (typeof obj.meetingUrl === 'string' && obj.meetingUrl.trim() !== '') {
+    const trimmedUrl = obj.meetingUrl.trim();
+    if (!isValidHttpsUrl(trimmedUrl)) {
+      return {
+        success: false,
+        error: `Invalid or unsafe meeting URL "${trimmedUrl}". Only https:// URLs are allowed.`,
+      };
+    }
+    validatedMeetingUrl = trimmedUrl;
+  }
+
+  // Meeting date time check if provided
+  let validatedMeetingDateTime: string | undefined = undefined;
+  if (typeof obj.meetingDateTime === 'string' && obj.meetingDateTime.trim() !== '') {
+    const trimmedDT = obj.meetingDateTime.trim();
+    if (isNaN(Date.parse(trimmedDT))) {
+      return {
+        success: false,
+        error: `Invalid meeting date/time format "${trimmedDT}".`,
+      };
+    }
+    validatedMeetingDateTime = trimmedDT;
+  }
+
   const validatedPayload: DeepLinkPayload = {
     v: 1,
     id: obj.id.trim(),
     personName: obj.personName.trim(),
     personRef: typeof obj.personRef === 'string' ? obj.personRef.trim() : undefined,
-    linkedInUrl: typeof obj.linkedInUrl === 'string' ? obj.linkedInUrl.trim() : undefined,
+    linkedInUrl: validatedLinkedInUrl,
     introContext: typeof obj.introContext === 'string' ? obj.introContext.trim() : undefined,
     status: validatedStatus,
-    meetingDateTime: typeof obj.meetingDateTime === 'string' ? obj.meetingDateTime.trim() : undefined,
-    meetingUrl: typeof obj.meetingUrl === 'string' ? obj.meetingUrl.trim() : undefined,
+    meetingDateTime: validatedMeetingDateTime,
+    meetingUrl: validatedMeetingUrl,
   };
 
   return { success: true, data: validatedPayload };

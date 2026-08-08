@@ -78,6 +78,10 @@ export function DeepLinkGeneratorModal({
             Generate a URL-safe encoded deep link (`/update?payload=...`) as would be sent by Boardy or an external sender.
           </p>
 
+          <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs">
+            <strong>Security Notice:</strong> Base64 or URL encoding is not encryption. Anyone with the link can decode its contents. Private user notes and star ratings are strictly omitted from deep links to safeguard privacy.
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">

@@ -1,6 +1,8 @@
 import { ConnectionRecord } from '../types/connection';
 
 const STORAGE_KEY = 'connection_dashboard_records_v1';
+const LAST_EXPORT_KEY = 'connection_dashboard_last_exported_at';
+const PRIVACY_NOTICE_KEY = 'connection_dashboard_privacy_notice_dismissed';
 
 // In-memory fallback for environments where window.localStorage is not available (e.g. Vitest/SSR)
 const inMemoryStore = new Map<string, string>();
@@ -93,5 +95,63 @@ export function clearStoredConnections(): void {
     inMemoryStore.delete(STORAGE_KEY);
   } catch (error) {
     console.error('Failed to clear stored connections:', error);
+  }
+}
+
+/**
+ * Gets the ISO date string of when the user last exported a JSON backup.
+ */
+export function getLastExportedAt(): string | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(LAST_EXPORT_KEY);
+    }
+    return inMemoryStore.get(LAST_EXPORT_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Updates the last exported timestamp to current time or provided ISO string.
+ */
+export function setLastExportedAt(isoDateStr: string = new Date().toISOString()): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(LAST_EXPORT_KEY, isoDateStr);
+    } else {
+      inMemoryStore.set(LAST_EXPORT_KEY, isoDateStr);
+    }
+  } catch (error) {
+    console.error('Failed to save last exported timestamp:', error);
+  }
+}
+
+/**
+ * Checks if the user has dismissed the first-use data loss notice.
+ */
+export function isFirstUseNoticeDismissed(): boolean {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(PRIVACY_NOTICE_KEY) === 'true';
+    }
+    return inMemoryStore.get(PRIVACY_NOTICE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sets the dismissal state for the first-use data loss notice.
+ */
+export function setFirstUseNoticeDismissed(dismissed: boolean): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(PRIVACY_NOTICE_KEY, String(dismissed));
+    } else {
+      inMemoryStore.set(PRIVACY_NOTICE_KEY, String(dismissed));
+    }
+  } catch (error) {
+    console.error('Failed to save privacy notice dismissal state:', error);
   }
 }

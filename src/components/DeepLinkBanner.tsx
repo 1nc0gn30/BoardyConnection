@@ -58,6 +58,10 @@ export function DeepLinkBanner({
             <span>Incoming Deep Link Payload (Version v:{payload.v})</span>
           </div>
 
+          <div className="mb-3 px-2.5 py-1 rounded bg-indigo-950/70 border border-indigo-700/60 text-[11px] text-indigo-200">
+            <strong>Security Notice:</strong> Base64 or URL encoding is not encryption. Anyone with this link may decode its contents. Your private notes and ratings are never included in deep links.
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1 max-w-2xl">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">

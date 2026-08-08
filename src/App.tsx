@@ -11,8 +11,11 @@ import {
   clearNeedsUpdateFlag,
   clearStoredConnections,
   deleteConnection,
+  getLastExportedAt,
   getStoredConnections,
+  isFirstUseNoticeDismissed,
   loadSampleData,
+  setFirstUseNoticeDismissed,
   updateConnectionNotes,
   updateConnectionRating,
   updateConnectionStatus,
@@ -24,6 +27,7 @@ import {
   generateDeepLinkUrl,
 } from './lib/deepLinkParser';
 
+import { BackupReminderBanner } from './components/BackupReminderBanner';
 import { BackupRestoreModal } from './components/BackupRestoreModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ConnectionCard } from './components/ConnectionCard';
@@ -33,13 +37,21 @@ import { DashboardStats } from './components/DashboardStats';
 import { DeepLinkBanner } from './components/DeepLinkBanner';
 import { DeepLinkGeneratorModal } from './components/DeepLinkGeneratorModal';
 import { EmptyState } from './components/EmptyState';
+import { FirstUseNoticeBanner } from './components/FirstUseNoticeBanner';
 import { Header } from './components/Header';
+import { StoragePrivacyModal } from './components/StoragePrivacyModal';
 
 export default function App() {
   const [connections, setConnections] = useState<ConnectionRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | 'all' | 'needs_update'>('all');
   const [sortBy, setSortBy] = useState<'updatedAt' | 'meetingDateTime' | 'personName' | 'rating'>('updatedAt');
+
+  // Privacy & Data-loss Protection State
+  const [firstUseNoticeDismissed, setFirstUseNoticeDismissedState] = useState<boolean>(() => isFirstUseNoticeDismissed());
+  const [lastExportedAt, setLastExportedAtState] = useState<string | null>(() => getLastExportedAt());
+  const [backupReminderDismissed, setBackupReminderDismissed] = useState<boolean>(false);
+  const [storageModalOpen, setStorageModalOpen] = useState<boolean>(false);
 
   // Deep link banner state
   const [incomingPayload, setIncomingPayload] = useState<ReturnType<typeof decodePayload> | null>(null);
@@ -272,6 +284,7 @@ export default function App() {
         }}
         onOpenBackupModal={() => setBackupModalOpen(true)}
         onOpenLinkGenerator={() => setGeneratorModalOpen(true)}
+        onOpenStorageModal={() => setStorageModalOpen(true)}
         onTriggerDemoLink={handleTriggerDemoLink}
         onClearData={handleClearAllData}
         onLoadSampleData={handleLoadSampleData}
@@ -280,6 +293,30 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* First Use Data Loss Protection Banner */}
+        {!firstUseNoticeDismissed && (
+          <FirstUseNoticeBanner
+            onDismiss={() => {
+              setFirstUseNoticeDismissed(true);
+              setFirstUseNoticeDismissedState(true);
+            }}
+            onOpenBackupModal={() => setBackupModalOpen(true)}
+          />
+        )}
+
+        {/* Compact Persistent Backup Reminder */}
+        {firstUseNoticeDismissed &&
+          connections.length > 0 &&
+          !backupReminderDismissed &&
+          (!lastExportedAt || Date.now() - new Date(lastExportedAt).getTime() > 7 * 86400000) && (
+            <BackupReminderBanner
+              recordCount={connections.length}
+              lastExportedAt={lastExportedAt}
+              onExported={() => setLastExportedAtState(getLastExportedAt())}
+              onDismiss={() => setBackupReminderDismissed(true)}
+            />
+          )}
+
         {/* Incoming Deep Link Notification Banner */}
         <DeepLinkBanner
           payload={incomingPayload?.success ? incomingPayload.data : null}
@@ -494,7 +531,18 @@ export default function App() {
           onClose={() => setBackupModalOpen(false)}
           onDataImported={() => {
             refreshConnections();
+            setLastExportedAtState(getLastExportedAt());
             setBackupModalOpen(false);
+          }}
+        />
+      )}
+
+      {storageModalOpen && (
+        <StoragePrivacyModal
+          onClose={() => setStorageModalOpen(false)}
+          onOpenBackupModal={() => {
+            setStorageModalOpen(false);
+            setBackupModalOpen(true);
           }}
         />
       )}

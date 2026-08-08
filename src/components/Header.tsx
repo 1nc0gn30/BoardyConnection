@@ -13,6 +13,7 @@ interface HeaderProps {
   onOpenAddModal: () => void;
   onOpenBackupModal: () => void;
   onOpenLinkGenerator: () => void;
+  onOpenStorageModal: () => void;
   onTriggerDemoLink: () => void;
   onClearData: () => void;
   onLoadSampleData: () => void;
@@ -23,6 +24,7 @@ export function Header({
   onOpenAddModal,
   onOpenBackupModal,
   onOpenLinkGenerator,
+  onOpenStorageModal,
   onTriggerDemoLink,
   onClearData,
   onLoadSampleData,
@@ -52,7 +54,7 @@ export function Header({
             </div>
 
             <div className="mt-1">
-              <PrivacyBadge />
+              <PrivacyBadge onClickInfo={onOpenStorageModal} />
             </div>
           </div>
 

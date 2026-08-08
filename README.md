@@ -13,6 +13,42 @@ A private, local-first web application for tracking personal introductions, meet
 
 ---
 
+## Data-Loss Protection & Local Storage Notice
+
+> **IMPORTANT NOTICE REGARDING DATA PERSISTENCE:**
+>
+> 1. **Records Live ONLY in This Browser:** All connection records, meeting notes, star ratings, and history logs are stored exclusively in your current browser's local storage (`localStorage`).
+> 2. **Browser Clearing Risk:** Clearing your browser history, deleting site data/cookies, or using automated browser cleanup tools **will permanently delete your records**.
+> 3. **No Automatic Sync:** Switching browsers (e.g. from Chrome to Safari) or changing devices will not automatically transfer your records.
+> 4. **Backup Protection:** Use the built-in **Backup / Restore** feature to export `.json` backups regularly. The application includes a first-use data notice and persistent backup reminders when new records exist without a recent export.
+
+---
+
+## Deep Link Security & Encryption Disclaimer
+
+> **SECURITY DISCLAIMER:**
+>
+> - **Base64 / URL Encoding is NOT Encryption:** Deep link payloads (`/update?payload=...`) use Base64 and URL parameter encoding for data transport. Anyone with access to the link URL can decode its contents.
+> - **Private Field Protection:** Private user notes (`userNotes`) and star ratings (`rating`) are **strictly excluded** from deep links and are never encoded into outgoing URLs.
+> - **Https Protocol Requirement:** External links (`linkedInUrl` and `meetingUrl`) within incoming payloads must start with `https://` to prevent script execution risks.
+
+---
+
+## Backup & Restore Workflow
+
+### Exporting Backups:
+Click **Backup / Restore** in the application header and select **Export .JSON Backup**. This generates a formatted file named `connection-dashboard-backup-YYYY-MM-DD.json`.
+
+### Restoring / Importing Backups:
+Before restoring data, select your preferred import strategy:
+
+- **Merge Mode (Recommended):** Combines imported connections with your existing local records by ID. If an imported record already exists, its basic details are updated while preserving your private notes, star ratings, and custom status history.
+- **Replace Mode (Wipe & Replace):** Completely wipes all existing local records and replaces them with the contents of the imported JSON file.
+
+*Note: The application explicitly prompts and warns before processing imports. Data is never silently overwritten.*
+
+---
+
 ## Quick Start & Local Development
 
 ### Prerequisites
@@ -83,11 +119,11 @@ export interface ConnectionRecord {
   id: string;               // Stable unique identifier
   personName: string;       // Full name of person
   personRef?: string;       // Optional opaque reference ID (e.g. boardy_ref_123)
-  linkedInUrl?: string;     // Optional profile link
+  linkedInUrl?: string;     // Optional profile link (https:// only)
   introContext: string;     // Intro context/background
   status: ConnectionStatus; // Current status
   meetingDateTime?: string; // Meeting date & time (ISO 8601 or YYYY-MM-DDTHH:mm)
-  meetingUrl?: string;      // Video call link
+  meetingUrl?: string;      // Video call link (https:// only)
   createdAt: string;        // ISO 8601 timestamp
   updatedAt: string;        // ISO 8601 timestamp
   userNotes: string;        // Private personal notes & reflection
@@ -120,15 +156,10 @@ Deep links deliver connection payloads encoded as URL-safe Base64 strings or raw
 }
 ```
 
-### Deep Link Safety Rules:
-- If a payload is malformed or invalid version (`v !== 1`), the app displays a clear error without altering existing stored data.
-- User personal notes and star ratings are never included in deep link URLs to preserve privacy.
-- Isolated parser located in `src/lib/deepLinkParser.ts`.
+### Deep Link Hardening Rules:
+1. **Size Limit:** Payloads exceeding 100 KB are rejected to protect against memory overload.
+2. **Strict Version Check:** Rejects payloads where `v !== 1`.
+3. **Protocol Sanitization:** Requires `https://` for external links (`linkedInUrl`, `meetingUrl`).
+4. **Invalid Date Handling:** Invalid date strings are discarded to ensure date picker compatibility.
+5. **Non-destructive Parsing:** If a deep link is invalid, existing stored connections remain untouched and a clear error notification is displayed.
 
----
-
-## V1 Limitations
-
-1. **Single Browser Storage:** Data is stored locally per browser instance. Clearing browser cache or site data will remove records unless backed up via JSON export.
-2. **No Multi-User Sync:** V1 does not sync across devices or offer multi-user network graph sharing by design.
-3. **No External Server:** No backend API is required or contacted.

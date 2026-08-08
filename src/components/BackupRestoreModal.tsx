@@ -111,34 +111,52 @@ export function BackupRestoreModal({
               2. Restore / Import JSON Backup
             </h3>
 
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-900 dark:text-amber-200">
+              <strong>Import Safety Warning:</strong> Importing will merge or replace your local records depending on the mode selected below. Local data is never silently overwritten.
+            </div>
+
             {/* Mode selector */}
-            <div className="flex items-center gap-4 text-xs">
-              <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
+            <div className="space-y-2 text-xs">
+              <label className="flex items-start gap-2 cursor-pointer p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-indigo-300 transition-colors">
                 <input
                   type="radio"
                   name="importMode"
                   value="merge"
                   checked={importMode === 'merge'}
                   onChange={() => setImportMode('merge')}
-                  className="text-indigo-600 focus:ring-indigo-500"
+                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500 shrink-0"
                 />
-                Merge (Add missing / preserve existing)
+                <div>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    Merge Mode (Recommended)
+                  </span>
+                  <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
+                    Combines imported items with your current records by ID. Preserves your existing private notes, ratings, and history.
+                  </p>
+                </div>
               </label>
 
-              <label className="flex items-center gap-1.5 cursor-pointer font-medium text-rose-700 dark:text-rose-400">
+              <label className="flex items-start gap-2 cursor-pointer p-2.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-white dark:bg-slate-900 hover:border-rose-300 transition-colors">
                 <input
                   type="radio"
                   name="importMode"
                   value="replace"
                   checked={importMode === 'replace'}
                   onChange={() => setImportMode('replace')}
-                  className="text-rose-600 focus:ring-rose-500"
+                  className="mt-0.5 text-rose-600 focus:ring-rose-500 shrink-0"
                 />
-                Replace All Existing Data
+                <div>
+                  <span className="font-bold text-rose-900 dark:text-rose-300">
+                    Replace Mode (Wipe &amp; Replace)
+                  </span>
+                  <p className="text-rose-700 dark:text-rose-400/80 text-[11px] mt-0.5">
+                    Completely replaces all current local records with the contents of the imported JSON file.
+                  </p>
+                </div>
               </label>
             </div>
 
-            <div className="relative">
+            <div className="relative pt-1">
               <input
                 type="file"
                 accept=".json,application/json"

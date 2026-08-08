@@ -5,9 +5,24 @@ import {
   DeepLinkPayload,
   StatusHistoryItem,
 } from '../types/connection';
-import { clearStoredConnections, getStoredConnections, saveStoredConnections } from './storage';
+import {
+  clearStoredConnections,
+  getLastExportedAt,
+  getStoredConnections,
+  isFirstUseNoticeDismissed,
+  saveStoredConnections,
+  setFirstUseNoticeDismissed,
+  setLastExportedAt,
+} from './storage';
 
-export { clearStoredConnections, getStoredConnections };
+export {
+  clearStoredConnections,
+  getLastExportedAt,
+  getStoredConnections,
+  isFirstUseNoticeDismissed,
+  setFirstUseNoticeDismissed,
+  setLastExportedAt,
+};
 
 /**
  * Helper to update user notes on a connection.
@@ -270,11 +285,13 @@ export function createManualConnection(data: {
  */
 export function exportToJSON(): string {
   const connections = getStoredConnections();
+  const now = new Date().toISOString();
   const backup: BackupData = {
     version: 1,
-    exportedAt: new Date().toISOString(),
+    exportedAt: now,
     connections,
   };
+  setLastExportedAt(now);
   return JSON.stringify(backup, null, 2);
 }
 
