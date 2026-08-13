@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  AlertCircle,
   Filter,
   Search,
   Sparkles,
@@ -27,6 +26,7 @@ import {
   generateDeepLinkUrl,
 } from './lib/deepLinkParser';
 
+import { BoardyMark } from './components/BoardyMark';
 import { BackupReminderBanner } from './components/BackupReminderBanner';
 import { BackupRestoreModal } from './components/BackupRestoreModal';
 import { ConfirmDialog } from './components/ConfirmDialog';
@@ -53,8 +53,12 @@ export default function App() {
   const [backupReminderDismissed, setBackupReminderDismissed] = useState<boolean>(false);
   const [storageModalOpen, setStorageModalOpen] = useState<boolean>(false);
 
-  // Deep link banner state
-  const [incomingPayload, setIncomingPayload] = useState<ReturnType<typeof decodePayload> | null>(null);
+  const [incomingPayload, setIncomingPayload] = useState<
+    | { success: true; data: ReturnType<typeof decodePayload> extends { success: true; data: infer D } ? D : never; isNew: boolean }
+    | { success: false; error: string }
+    | null
+  >(null);
+  const [savedLinkRecord, setSavedLinkRecord] = useState<ConnectionRecord | null>(null);
 
   // Modals state
   const [detailModalConn, setDetailModalConn] = useState<ConnectionRecord | null>(null);
@@ -86,24 +90,43 @@ export default function App() {
     refreshConnections();
   }, []);
 
-  // Parse deep link payload from URL location on load or url change
+  const readPayloadFromLocation = () => {
+    const searchParams = new URLSearchParams(window.location.search);
+    let rawPayload = searchParams.get('payload');
+    if (!rawPayload && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?/, '?'));
+      rawPayload = hashParams.get('payload');
+    }
+    return rawPayload;
+  };
+
+  const clearPayloadFromUrl = () => {
+    if (typeof window === 'undefined' || !window.history) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('payload');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash.split('?')[0] || ''}`);
+  };
+
+  const applyDeepLink = (rawPayload: string) => {
+    const result = decodePayload(rawPayload);
+    if (!result.success) {
+      setIncomingPayload(result);
+      setSavedLinkRecord(null);
+      return;
+    }
+    const applied = upsertFromDeepLink(result.data);
+    setConnections(applied.allRecords);
+    setSavedLinkRecord(applied.record);
+    setIncomingPayload({ success: true, data: result.data, isNew: applied.isNew });
+    clearPayloadFromUrl();
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const parseUrlPayload = () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      let rawPayload = searchParams.get('payload');
-
-      // Also support hash route / update path payloads
-      if (!rawPayload && window.location.hash) {
-        const hashParams = new URLSearchParams(window.location.hash.replace(/^#\/?/, '?'));
-        rawPayload = hashParams.get('payload');
-      }
-
-      if (rawPayload) {
-        const result = decodePayload(rawPayload);
-        setIncomingPayload(result);
-      }
+      const rawPayload = readPayloadFromLocation();
+      if (rawPayload) applyDeepLink(rawPayload);
     };
 
     parseUrlPayload();
@@ -111,44 +134,22 @@ export default function App() {
     return () => window.removeEventListener('popstate', parseUrlPayload);
   }, []);
 
-  // Trigger import from deep link banner
-  const handleImportIncomingDeepLink = () => {
-    if (incomingPayload && incomingPayload.success) {
-      const { allRecords } = upsertFromDeepLink(incomingPayload.data);
-      setConnections(allRecords);
-      setIncomingPayload(null);
-
-      // Clean up URL parameter without full page reload
-      if (typeof window !== 'undefined' && window.history) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('payload');
-        window.history.replaceState({}, '', url.pathname);
-      }
-    }
-  };
-
-  // Trigger Demo Link for testing
   const handleTriggerDemoLink = () => {
     const samplePayload = createSamplePayload();
-    const demoUrl = generateDeepLinkUrl(samplePayload);
-
-    // Set URL search param & parse payload
+    const encoded = encodeURIComponent(JSON.stringify(samplePayload));
     if (typeof window !== 'undefined') {
-      window.history.pushState({}, '', demoUrl);
-      const result = decodePayload(encodeURIComponent(JSON.stringify(samplePayload)));
-      setIncomingPayload(result);
+      window.history.pushState({}, '', generateDeepLinkUrl(samplePayload));
     }
+    applyDeepLink(encoded);
   };
 
-  // Test opening link from generator modal
   const handleTestGeneratedLink = (urlStr: string) => {
     try {
       const parsedUrl = new URL(urlStr);
       const rawPayload = parsedUrl.searchParams.get('payload');
       if (rawPayload) {
         window.history.pushState({}, '', urlStr);
-        const result = decodePayload(rawPayload);
-        setIncomingPayload(result);
+        applyDeepLink(rawPayload);
       }
     } catch {
       console.error('Invalid URL string:', urlStr);
@@ -275,8 +276,15 @@ export default function App() {
   const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all';
 
   return (
-    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans">
-      {/* App Header */}
+    <div className="relative min-h-screen bg-ink text-paper flex flex-col font-sans">
+      <div className="app-atmosphere" aria-hidden="true">
+        <div className="app-atmosphere__glow" />
+        <div className="app-atmosphere__flute" />
+        <div className="app-atmosphere__vignette" />
+        <div className="app-atmosphere__grain" />
+      </div>
+
+      <div className="relative z-10 flex min-h-screen flex-col">
       <Header
         onOpenAddModal={() => {
           setEditingConn(null);
@@ -321,8 +329,15 @@ export default function App() {
         <DeepLinkBanner
           payload={incomingPayload?.success ? incomingPayload.data : null}
           error={!incomingPayload?.success ? incomingPayload?.error || null : null}
-          onImport={handleImportIncomingDeepLink}
-          onDismiss={() => setIncomingPayload(null)}
+          saved={Boolean(incomingPayload?.success)}
+          isNew={incomingPayload?.success ? incomingPayload.isNew : false}
+          onOpen={() => {
+            if (savedLinkRecord) setDetailModalConn(savedLinkRecord);
+          }}
+          onDismiss={() => {
+            setIncomingPayload(null);
+            setSavedLinkRecord(null);
+          }}
         />
 
         {/* Dashboard Statistics Bar */}
@@ -333,84 +348,73 @@ export default function App() {
           />
         )}
 
-        {/* Search & Filter Bar */}
         {connections.length > 0 && (
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs mb-6 space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              {/* Search Box */}
+          <div className="mb-5 space-y-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-paper/35" />
                 <input
                   type="text"
-                  placeholder="Search by name, intro notes, or reference ID..."
+                  placeholder="Search people or notes"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-10 pr-9 py-2.5 rounded-xl surface-inset text-sm text-paper placeholder:text-paper/35 focus:outline-hidden focus:ring-2 focus:ring-kraft/50"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-paper/40 hover:text-paper"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
-              {/* Sort Selector */}
-              <div className="flex items-center gap-2 shrink-0 text-xs">
-                <span className="text-slate-500 font-medium">Sort by:</span>
+              <label className="flex items-center gap-2 shrink-0 text-xs text-paper/45 font-semibold">
+                <span className="hidden sm:inline">Sort</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 font-medium text-slate-700 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="px-3 py-2.5 rounded-xl surface-inset font-semibold text-paper focus:outline-hidden focus:ring-2 focus:ring-kraft/50 cursor-pointer"
                 >
-                  <option value="updatedAt">Recently Updated</option>
-                  <option value="meetingDateTime">Meeting Date</option>
-                  <option value="personName">Person Name (A-Z)</option>
-                  <option value="rating">Rating (Highest)</option>
+                  <option value="updatedAt">Latest</option>
+                  <option value="meetingDateTime">Meeting</option>
+                  <option value="personName">Name</option>
+                  <option value="rating">Stars</option>
                 </select>
-              </div>
+              </label>
             </div>
 
-            {/* Status Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 text-xs no-scrollbar">
-              <span className="text-slate-400 font-medium text-[11px] shrink-0 mr-1 flex items-center gap-1">
-                <Filter className="w-3 h-3" />
-                Filter:
-              </span>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs no-scrollbar">
+              <Filter className="w-3.5 h-3.5 text-kraft shrink-0" />
 
-              {/* All */}
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
+                className={`px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer shrink-0 ${
                   statusFilter === 'all'
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-bold'
-                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200'
+                    ? 'bg-paper text-ink'
+                    : 'text-paper/70 hover:bg-white/5 border border-line'
                 }`}
               >
-                All ({connections.length})
+                Everyone
               </button>
 
-              {/* Action Needed */}
               {connections.some((c) => c.needsUpdate) && (
                 <button
                   type="button"
                   onClick={() => setStatusFilter('needs_update')}
-                  className={`px-3 py-1.5 rounded-full font-bold transition-colors cursor-pointer shrink-0 flex items-center gap-1 ${
+                  className={`px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer shrink-0 ${
                     statusFilter === 'needs_update'
-                      ? 'bg-amber-500 text-slate-950 font-extrabold shadow-xs'
-                      : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-200 hover:bg-amber-200'
+                      ? 'bg-kraft text-ink'
+                      : 'text-kraft hover:bg-kraft/10 border border-kraft/30'
                   }`}
                 >
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-700 dark:text-amber-300" />
-                  <span>Needs Update ({connections.filter((c) => c.needsUpdate).length})</span>
+                  Need a note ({connections.filter((c) => c.needsUpdate).length})
                 </button>
               )}
 
-              {/* Status config pills */}
               {(Object.keys(STATUS_CONFIG) as ConnectionStatus[]).map((st) => {
                 const conf = STATUS_CONFIG[st];
                 const count = connections.filter((c) => c.status === st).length;
@@ -422,13 +426,13 @@ export default function App() {
                     key={st}
                     type="button"
                     onClick={() => setStatusFilter(st)}
-                    className={`px-3 py-1.5 rounded-full font-medium transition-colors cursor-pointer shrink-0 ${
+                    className={`px-3 py-1.5 rounded-full font-semibold transition-colors cursor-pointer shrink-0 ${
                       isActive
-                        ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                        : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200'
+                        ? 'bg-smile text-white'
+                        : 'text-paper/70 hover:bg-white/5 border border-line'
                     }`}
                   >
-                    {conf.label} ({count})
+                    {conf.label}
                   </button>
                 );
               })}
@@ -468,31 +472,55 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto py-6 border-t border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>
-            Connection Dashboard • Private local-first MVP. All data stored in browser localStorage.
-          </p>
+      <footer className="mt-auto py-6 border-t border-kraft/12 text-xs text-paper/50 bg-ink/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
+            <BoardyMark size="sm" alt="Boardy" className="rounded-lg mark-ring" />
+            <p className="font-medium text-paper/70">
+              <span className="font-display text-paper">Boardy</span>
+              <span className="text-paper/45"> · your private intro desk</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold">
+            <a
+              href="https://x.com/boardyai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-paper/50 hover:text-kraft-bright transition-colors"
+            >
+              Official X (@boardyai)
+            </a>
+            <span className="text-line">•</span>
+            <a
+              href="https://www.linkedin.com/company/boardy/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-paper/50 hover:text-kraft-bright transition-colors"
+            >
+              LinkedIn
+            </a>
+            <span className="text-line">•</span>
             <button
               type="button"
               onClick={handleTriggerDemoLink}
-              className="hover:underline text-indigo-600 dark:text-indigo-400 font-medium inline-flex items-center gap-1 cursor-pointer"
+              className="hover:underline text-kraft font-bold inline-flex items-center gap-1 cursor-pointer"
             >
               <Sparkles className="w-3 h-3" />
-              Simulate Boardy Deep Link
+              Sample intro
             </button>
-            <span>•</span>
+            <span className="text-line">•</span>
             <button
               type="button"
               onClick={() => setGeneratorModalOpen(true)}
-              className="hover:underline text-slate-600 dark:text-slate-300 font-medium cursor-pointer"
+              className="hover:underline text-paper/70 font-bold cursor-pointer"
             >
-              Deep Link Generator
+              Make an intro link
             </button>
           </div>
         </div>
       </footer>
+
 
       {/* Modals */}
       {detailModalConn && (
@@ -532,7 +560,6 @@ export default function App() {
           onDataImported={() => {
             refreshConnections();
             setLastExportedAtState(getLastExportedAt());
-            setBackupModalOpen(false);
           }}
         />
       )}
@@ -561,6 +588,7 @@ export default function App() {
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
       />
+      </div>
     </div>
   );
 }

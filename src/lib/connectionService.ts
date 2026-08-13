@@ -5,6 +5,7 @@ import {
   DeepLinkPayload,
   StatusHistoryItem,
 } from '../types/connection';
+import { parseBackupJson } from './backupSchema';
 import {
   clearStoredConnections,
   getLastExportedAt,
@@ -302,105 +303,38 @@ export function importFromJSON(
   jsonString: string,
   mode: 'merge' | 'replace' = 'merge'
 ): { success: boolean; importedCount: number; error?: string } {
-  try {
-    const parsed = JSON.parse(jsonString);
-
-    let rawConnections: unknown[] = [];
-
-    if (parsed && typeof parsed === 'object') {
-      if (Array.isArray(parsed.connections)) {
-        rawConnections = parsed.connections;
-      } else if (Array.isArray(parsed)) {
-        rawConnections = parsed;
-      } else {
-        return {
-          success: false,
-          importedCount: 0,
-          error: 'Invalid JSON format. Expected an array of connections or backup file format.',
-        };
-      }
-    } else {
-      return {
-        success: false,
-        importedCount: 0,
-        error: 'Invalid backup file content.',
-      };
-    }
-
-    // Validate each connection record in the array
-    const validRecords: ConnectionRecord[] = [];
-    for (const item of rawConnections) {
-      if (
-        item &&
-        typeof item === 'object' &&
-        'id' in item &&
-        typeof (item as Record<string, unknown>).id === 'string' &&
-        'personName' in item &&
-        typeof (item as Record<string, unknown>).personName === 'string'
-      ) {
-        const obj = item as Partial<ConnectionRecord>;
-        validRecords.push({
-          id: String(obj.id),
-          personName: String(obj.personName),
-          personRef: obj.personRef ? String(obj.personRef) : undefined,
-          linkedInUrl: obj.linkedInUrl ? String(obj.linkedInUrl) : undefined,
-          introContext: obj.introContext ? String(obj.introContext) : '',
-          status: (obj.status as ConnectionStatus) || 'not_started',
-          meetingDateTime: obj.meetingDateTime ? String(obj.meetingDateTime) : undefined,
-          meetingUrl: obj.meetingUrl ? String(obj.meetingUrl) : undefined,
-          createdAt: obj.createdAt || new Date().toISOString(),
-          updatedAt: obj.updatedAt || new Date().toISOString(),
-          userNotes: obj.userNotes || '',
-          rating: typeof obj.rating === 'number' ? obj.rating : undefined,
-          needsUpdate: Boolean(obj.needsUpdate),
-          statusHistory: Array.isArray(obj.statusHistory) ? obj.statusHistory : [],
-        });
-      }
-    }
-
-    if (validRecords.length === 0) {
-      return {
-        success: false,
-        importedCount: 0,
-        error: 'No valid connection records found in the provided JSON file.',
-      };
-    }
-
-    if (mode === 'replace') {
-      saveStoredConnections(validRecords);
-      return { success: true, importedCount: validRecords.length };
-    } else {
-      // Merge mode (deduplicate by stable id)
-      const existing = getStoredConnections();
-      const existingMap = new Map(existing.map((r) => [r.id, r]));
-
-      validRecords.forEach((rec) => {
-        if (existingMap.has(rec.id)) {
-          // Merge: preserve user notes if existing record has notes
-          const old = existingMap.get(rec.id)!;
-          existingMap.set(rec.id, {
-            ...rec,
-            userNotes: old.userNotes || rec.userNotes,
-            rating: old.rating ?? rec.rating,
-            statusHistory:
-              old.statusHistory.length > rec.statusHistory.length ? old.statusHistory : rec.statusHistory,
-          });
-        } else {
-          existingMap.set(rec.id, rec);
-        }
-      });
-
-      const mergedList = Array.from(existingMap.values());
-      saveStoredConnections(mergedList);
-      return { success: true, importedCount: validRecords.length };
-    }
-  } catch (err) {
-    return {
-      success: false,
-      importedCount: 0,
-      error: `Failed to parse JSON file: ${(err as Error).message}`,
-    };
+  const parsed = parseBackupJson(jsonString);
+  if (parsed.success === false) {
+    return { success: false, importedCount: 0, error: parsed.error };
   }
+
+  const validRecords = parsed.backup.connections;
+
+  if (mode === 'replace') {
+    saveStoredConnections(validRecords);
+    return { success: true, importedCount: validRecords.length };
+  }
+
+  const existing = getStoredConnections();
+  const existingMap = new Map(existing.map((r) => [r.id, r]));
+
+  validRecords.forEach((rec) => {
+    if (existingMap.has(rec.id)) {
+      const old = existingMap.get(rec.id)!;
+      existingMap.set(rec.id, {
+        ...rec,
+        userNotes: old.userNotes || rec.userNotes,
+        rating: old.rating ?? rec.rating,
+        statusHistory:
+          old.statusHistory.length > rec.statusHistory.length ? old.statusHistory : rec.statusHistory,
+      });
+    } else {
+      existingMap.set(rec.id, rec);
+    }
+  });
+
+  saveStoredConnections(Array.from(existingMap.values()));
+  return { success: true, importedCount: validRecords.length };
 }
 
 /**

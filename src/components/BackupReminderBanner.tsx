@@ -1,4 +1,4 @@
-import { Download, HardDriveDownload, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { exportToJSON } from '../lib/connectionService';
 
 interface BackupReminderBannerProps {
@@ -28,43 +28,34 @@ export function BackupReminderBanner({
     onExported();
   };
 
-  const timeAgoText = lastExportedAt
-    ? `Last exported on ${new Date(lastExportedAt).toLocaleDateString()}`
-    : 'No recent JSON backup found';
+  const when = lastExportedAt
+    ? `Last backup ${new Date(lastExportedAt).toLocaleDateString()}`
+    : 'No backup yet';
 
   return (
     <div
       id="backup-reminder-banner"
-      className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3 sm:p-4 mb-6 text-xs sm:text-sm text-indigo-900 dark:text-indigo-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs"
+      className="mb-5 rounded-2xl border border-smile/20 bg-smile/8 px-3.5 py-3 sm:px-4 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
     >
-      <div className="flex items-center gap-2.5">
-        <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/80 rounded-lg text-indigo-700 dark:text-indigo-300 shrink-0">
-          <HardDriveDownload className="w-4 h-4" />
-        </div>
-        <div>
-          <span className="font-bold text-indigo-950 dark:text-indigo-100">
-            Backup Reminder ({recordCount} {recordCount === 1 ? 'record' : 'records'})
-          </span>
-          <p className="text-xs text-indigo-700 dark:text-indigo-300/80">
-            {timeAgoText}. Protect your data against browser cache clears.
-          </p>
-        </div>
-      </div>
+      <p className="text-paper/80">
+        Back up {recordCount} {recordCount === 1 ? 'person' : 'people'} so a browser clear doesn’t wipe them.{' '}
+        <span className="text-paper/45">{when}.</span>
+      </p>
 
-      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
           onClick={handleQuickExport}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-smile hover:bg-[#4b8cd4] text-white font-bold text-xs transition-colors cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Export Backup</span>
+          <span>Export</span>
         </button>
 
         <button
           type="button"
           onClick={onDismiss}
-          className="p-1 rounded-lg text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-paper/40 hover:text-paper transition-colors cursor-pointer"
           title="Dismiss reminder"
         >
           <X className="w-4 h-4" />

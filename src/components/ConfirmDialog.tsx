@@ -24,30 +24,30 @@ export function ConfirmDialog({
   return (
     <div
       id="confirm-dialog-backdrop"
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 z-50 bg-ink/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4"
       onClick={onCancel}
     >
       <div
         id="confirm-dialog-content"
-        className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md p-5 animate-in fade-in zoom-in-95 duration-150"
+        className="surface rounded-3xl glow-subtle w-full max-w-md p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3.5">
           <div
-            className={`p-2.5 rounded-full shrink-0 ${
+            className={`p-3 rounded-2xl shrink-0 ${
               isDanger
-                ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400'
-                : 'bg-indigo-100 text-indigo-600'
+                ? 'bg-rose-950/80 text-rose-400 border border-rose-800'
+                : 'bg-indigo-950/80 text-indigo-400 border border-indigo-800'
             }`}
           >
             <AlertTriangle className="w-5 h-5" />
           </div>
 
           <div className="flex-1">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+            <h3 className="text-base font-extrabold text-white">
               {title}
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
               {message}
             </p>
           </div>
@@ -55,17 +55,17 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="text-slate-400 hover:text-slate-600 p-1"
+            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="mt-5 flex items-center justify-end gap-2.5">
+        <div className="mt-6 flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-300 cursor-pointer"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-700 hover:bg-slate-800 text-slate-300 cursor-pointer transition-colors"
           >
             Cancel
           </button>
@@ -73,10 +73,10 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs cursor-pointer ${
+            className={`px-4.5 py-2.5 rounded-xl text-xs font-extrabold text-white shadow-md transition-all cursor-pointer active:scale-98 ${
               isDanger
-                ? 'bg-rose-600 hover:bg-rose-700'
-                : 'bg-indigo-600 hover:bg-indigo-700'
+                ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/30'
+                : 'bg-smile hover:bg-[#4b8cd4]'
             }`}
           >
             {confirmLabel}
@@ -86,3 +86,4 @@ export function ConfirmDialog({
     </div>
   );
 }
+

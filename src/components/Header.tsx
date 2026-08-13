@@ -1,12 +1,16 @@
 import {
+  ChevronDown,
   Download,
   Link as LinkIcon,
+  LogIn,
+  LogOut,
   Plus,
   RotateCcw,
   Sparkles,
   Trash2,
-  Users,
 } from 'lucide-react';
+import { useNetlifyIdentity } from '../lib/identity';
+import { BoardyMark } from './BoardyMark';
 import { PrivacyBadge } from './PrivacyBadge';
 
 interface HeaderProps {
@@ -30,101 +34,152 @@ export function Header({
   onLoadSampleData,
   totalConnections,
 }: HeaderProps) {
-  return (
-    <header id="main-header" className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          {/* App Brand & Title */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 font-bold text-lg">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  Connection Dashboard
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                    v1 MVP
-                  </span>
-                </h1>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                  Track personal introductions, meeting notes, and follow-up updates locally.
-                </p>
-              </div>
-            </div>
+  const { user, email, open, logout } = useNetlifyIdentity();
 
-            <div className="mt-1">
+  const closeTools = (el: HTMLElement) => {
+    el.closest('details')?.removeAttribute('open');
+  };
+
+  return (
+    <header
+      id="main-header"
+      className="sticky top-0 z-30 border-b border-kraft/15 bg-ink/78 backdrop-blur-xl"
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <BoardyMark
+              size="md"
+              alt="Boardy mark"
+              className="rounded-2xl mark-ring shrink-0"
+            />
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-2">
+                <h1 className="wordmark text-[1.55rem] sm:text-[1.8rem] text-paper leading-none">
+                  Boardy
+                </h1>
+                <span className="wordmark-kicker hidden xs:inline sm:inline">
+                  Connection
+                </span>
+              </div>
               <PrivacyBadge onClickInfo={onOpenStorageModal} />
             </div>
           </div>
 
-          {/* Header Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-            <button
-              type="button"
-              id="header-btn-demo"
-              onClick={onTriggerDemoLink}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 dark:text-amber-200 dark:border-amber-800 transition-colors shadow-xs cursor-pointer"
-              title="Simulate receiving a Boardy deep link update"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Try Demo Deep Link</span>
-            </button>
-
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               id="header-btn-add"
               onClick={onOpenAddModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-2 text-xs font-bold rounded-xl bg-smile hover:bg-[#4b8cd4] text-white transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Connection</span>
+              <span>Add</span>
             </button>
 
-            <button
-              type="button"
-              id="header-btn-backup"
-              onClick={onOpenBackupModal}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-              title="Backup or restore JSON connection records"
-            >
-              <Download className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>Backup / Restore</span>
-            </button>
-
-            <button
-              type="button"
-              id="header-btn-generator"
-              onClick={onOpenLinkGenerator}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
-              title="Generate custom deep link payloads"
-            >
-              <LinkIcon className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>Link Generator</span>
-            </button>
-
-            {totalConnections === 0 ? (
-              <button
-                type="button"
-                id="header-btn-samples"
-                onClick={onLoadSampleData}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800 transition-colors cursor-pointer"
+            <details className="tools-menu">
+              <summary
+                className="inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl bg-navy-mid/80 hover:bg-navy-mid text-paper/90 border border-line transition-colors"
+                aria-label="More tools"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Load Sample Data</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                id="header-btn-clear"
-                onClick={onClearData}
-                className="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium rounded-lg text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer"
-                title="Clear all stored local data with confirmation"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Clear All</span>
-              </button>
-            )}
+                More
+                <ChevronDown className="w-3.5 h-3.5 text-kraft" />
+              </summary>
+              <div className="tools-menu__panel surface rounded-2xl glow-subtle">
+                <button
+                  type="button"
+                  id="header-btn-demo"
+                  onClick={(e) => {
+                    closeTools(e.currentTarget);
+                    onTriggerDemoLink();
+                  }}
+                  className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl text-kraft-bright hover:bg-kraft/10 transition-colors cursor-pointer"
+                  title="See what a Boardy intro looks like"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-kraft" />
+                  <span>Try a sample intro</span>
+                </button>
+                <button
+                  type="button"
+                  id="header-btn-backup"
+                  onClick={(e) => {
+                    closeTools(e.currentTarget);
+                    onOpenBackupModal();
+                  }}
+                  className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl text-paper/90 hover:bg-white/5 transition-colors cursor-pointer"
+                  title="Backup or restore your people"
+                >
+                  <Download className="w-3.5 h-3.5 text-kraft" />
+                  <span>Backup</span>
+                </button>
+                <button
+                  type="button"
+                  id="header-btn-generator"
+                  onClick={(e) => {
+                    closeTools(e.currentTarget);
+                    onOpenLinkGenerator();
+                  }}
+                  className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl text-paper/90 hover:bg-white/5 transition-colors cursor-pointer"
+                  title="Make a shareable intro link"
+                >
+                  <LinkIcon className="w-3.5 h-3.5 text-kraft" />
+                  <span>Make an intro link</span>
+                </button>
+                {user ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      closeTools(e.currentTarget);
+                      logout();
+                    }}
+                    className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl text-paper/80 hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-kraft" />
+                    <span className="truncate">Sign out {email}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      closeTools(e.currentTarget);
+                      open('login');
+                    }}
+                    className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl text-paper/90 hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-kraft" />
+                    <span>Sign in for cloud backup</span>
+                  </button>
+                )}
+                {totalConnections === 0 ? (
+                  <button
+                    type="button"
+                    id="header-btn-samples"
+                    onClick={(e) => {
+                      closeTools(e.currentTarget);
+                      onLoadSampleData();
+                    }}
+                    className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl text-emerald-300 hover:bg-emerald-950/50 transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Load examples</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    id="header-btn-clear"
+                    onClick={(e) => {
+                      closeTools(e.currentTarget);
+                      onClearData();
+                    }}
+                    className="w-full inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-xl text-rose-300 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                    title="Clear everyone stored in this browser"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear all</span>
+                  </button>
+                )}
+              </div>
+            </details>
           </div>
         </div>
       </div>
